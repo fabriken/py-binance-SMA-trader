@@ -4,7 +4,11 @@ A simple trading bot written in python. Trade multiple coin pairs simultaneously
 Can be customized to fit your favorite signal (RSI, MA, EMA, MACD, BBANDS etc.), as the full TA-Lib is at your disposal.
 
 Will sell if the configured profit margin is > last buy price.
-Define as many pairs as you like to trade in the PAIRS variable. Individual config for profit and sma low & high for each pair.
+Define as many pairs as you like to trade in the PAIRS variable.
+
+Individual config for profit and sma low & high for each pair.
+
+Before running, set the API_KEY and API_SECRET in the config.py file.
 
 Required packages:
 
