@@ -8,8 +8,10 @@ Define as many pairs as you like to trade in the PAIRS variable. Individual conf
 
 Required packages:
 
-pip install TA-Lib (I had trouble installing this on my linux distro, had to use a manual 'sudo make install' from tar.gz)
+pip install TA-Lib (Use tar.gz from website if having trouble installing)
+
 pip install python-binance
+
 pip install numpy (numpy should be included in TA-Lib, but if not run this)
 
 TA-Lib:
@@ -18,4 +20,5 @@ https://pypi.org/project/TA-Lib/
 python-binance:
 https://python-binance.readthedocs.io/en/latest/overview.html
 
-# DISCLAIMER: Free to use trading bot, use at your own risk! I do not take responsibility for any losses.
+# DISCLAIMER: Free to use trading bot, use at your own risk!
+# I do not take any responsibility for any losses.
