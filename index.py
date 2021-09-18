@@ -17,7 +17,7 @@ PAIRS = {                          # Define pairs to trade here:
         'base': 'USDT',            # Make sure symbol and base are set to the same as the PAIRS.keys().
         'kline': '@kline_1m',      # Set kline interval here.
         'price': '@bookTicker',    # Set price ticker here.
-        'decPrice': 5,             # Count how many decimals the price has.
+        'decPrice': 5,             # Count how many decimals the price has and set here.
         'decOrder': 0,             # Same as decPrice, but for the order.
         'profit': 1 + fee,         # Set profit margin here.
         'smaLow': 5,               # Set the sma low here, default 5.
