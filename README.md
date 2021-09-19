@@ -10,6 +10,10 @@ Individual config for profit and sma low & high for each pair.
 
 Before running, set the API_KEY and API_SECRET in the config.py file.
 
+Test mode can be enabled by setting 'test_mode = 1'.
+
+This will create a test order, so you can make sure your settings (mainly decimal places) plays niceley with Binance API.
+
 Required packages:
 
 pip install TA-Lib (Use tar.gz from website if having trouble installing)
