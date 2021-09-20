@@ -314,13 +314,16 @@ def ws():
                         # last_sma_high = 55 # Test values
                         
                         if PAIRS[i]['bid'] and PAIRS[i]['ask']: # Make sure we have prices.
+                            assetBal = float(PAIRS[i]['assetBal'])
+                            bid = PAIRS[i]['bid']
+                            ask = PAIRS[i]['ask']
 
 
                             if PAIRS[i]['order'] == 0: # If not in order, create an inital order, buy or sell, but await signal first:
                                 assetBal = float(PAIRS[i]['assetBal'])
                                 bid = PAIRS[i]['bid']
                                 ask = PAIRS[i]['ask']
-                                    # div = div - 1
+                                # div = div - 1
                                 
                             if assetBal * ask > minNotional: # Place SELL ORDER if true.
                                 # div = div - 1
