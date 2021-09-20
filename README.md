@@ -29,7 +29,12 @@ python-binance:
 https://python-binance.readthedocs.io/en/latest/overview.html
 
 # Run as systemd service:
-Run: sudo ./install-as-systemd-service.sh
+
+Change 'User=user' to your linux user name under [Service] in sma-trader.service
+
+Make script executable by running: sudo chmod +x install-as-systemd-service.sh
+
+Then run: sudo ./install-as-systemd-service.sh to install the systemd service.
 
 # DISCLAIMER: Free to use trading bot, use at your own risk!
 # I do not take any responsibility for any losses.
