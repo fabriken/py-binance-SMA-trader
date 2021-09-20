@@ -19,9 +19,9 @@ PAIRS = {                          # Define pairs to trade here:
         'base': 'USDT',            # Make sure symbol and base are set to the same as the PAIRS.keys().
         'kline': '@kline_15m',     # Set kline interval here.
         'price': '@bookTicker',    # Set price ticker here.
+        'profit': 2 + fee,         # Set profit margin here.
         'decPrice': 5,             # Count how many decimals the price has and set here.
         'decOrder': 0,             # Same as decPrice, but for the order.
-        'profit': 1 + fee,         # Set profit margin here.
         'smaLow': 5,               # Set the sma low here, default 5.
         'smaHigh': 10,             # Set the sma low here, default 10.
         'bid': 0,
@@ -36,8 +36,11 @@ PAIRS = {                          # Define pairs to trade here:
         'closes': []
     },
     'CELRUSDT':    {
+        'symbol': 'CELR',
+        'base': 'USDT',
         'kline': '@kline_1h',
         'price': '@bookTicker',
+        'profit': 2 + fee, # Set profit margin here.
         'decPrice': 5,
         'decOrder': 1,
         'bid': 0,
@@ -49,16 +52,16 @@ PAIRS = {                          # Define pairs to trade here:
         'smaLow': 5,
         'smaHigh': 10,
         'qty': 0,
-        'symbol': 'CELR',
-        'base': 'USDT',
         'awaitOrder': False,
         'lastPrice': 0,
-        'profit': 1 + fee, # Set profit margin here.
         'closes': []
     },
     'DYDXUSDT':    {
+        'symbol': 'DYDX',
+        'base': 'USDT',
         'kline': '@kline_1h',
         'price': '@bookTicker',
+        'profit': 2 + fee, # Set profit margin here.
         'decPrice': 3,
         'decOrder': 2,
         'bid': 0,
@@ -70,16 +73,14 @@ PAIRS = {                          # Define pairs to trade here:
         'smaLow': 5,
         'smaHigh': 10,
         'qty': 0,
-        'symbol': 'DYDX',
-        'base': 'USDT',
         'awaitOrder': False,
         'lastPrice': 0,
-        'profit': 1 + fee, # Set profit margin here.
         'closes': []
     },
     'SHIBUSDT':    {
         'kline': '@kline_15m',
         'price': '@bookTicker',
+        'profit': 2 + fee, # Set profit margin here.
         'decPrice': 8,
         'decOrder': 0,
         'bid': 0,
@@ -95,7 +96,6 @@ PAIRS = {                          # Define pairs to trade here:
         'base': 'USDT',
         'awaitOrder': False,
         'lastPrice': 0,
-        'profit': 2 + fee, # Set profit margin here.
         'closes': []
     }
 }
@@ -202,9 +202,9 @@ def load_csv(side, pair):
             return last_price
     except FileNotFoundError:
         print(f'No log file found for {side}-{pair}')
-        for i in PAIRS.keys():
-            if i == pair:
-                PAIRS[i]['lastPrice'] = 1
+        # for i in PAIRS.keys():
+        #     if i == pair:
+        #         PAIRS[i]['lastPrice'] = 1
         return False
 
 def order(side, symbol, price, qty):
@@ -266,12 +266,12 @@ def ws():
                         if msg['X'] == 'FILLED':
 
                             if side == 'BUY':
-                                print('BUY ORDER FILLED:', pair, price, qty)
+                                print('\nBUY ORDER FILLED:', pair, price, qty)
                                 div = div - 1
                                 save_csv(side, pair, price, qty)
 
                             else:
-                                print('SELL ORDER FILLED:', pair, price, qty)
+                                print('\nSELL ORDER FILLED:', pair, price, qty)
                                 div = div + 1
                                 
                                 if os.path.exists(f"BUY-{pair}.csv"): 
