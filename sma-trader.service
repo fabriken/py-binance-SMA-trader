@@ -1,9 +1,12 @@
+#!/bin/bash
 [Unit]
 Description=SMA Trader Service
 After=network.target
 
 [Service]
-ExecStart=/etc/systemd/system/sma-trader-app.py
+User=user
+WorkingDirectory=/etc/systemd/system/sma-trader
+ExecStart=/usr/bin/python3 /etc/systemd/system/sma-trader/sma-trader-app.py
 
 [Install]
 WantedBy=multi-user.target
