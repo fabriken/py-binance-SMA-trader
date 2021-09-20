@@ -14,7 +14,7 @@ Test mode can be enabled by setting 'test_mode = 1'.
 
 This will create a test order, so you can make sure your settings (mainly decimal places) plays niceley with Binance API.
 
-Required packages:
+# Required packages:
 
 pip install TA-Lib (Use tar.gz from website if having trouble installing)
 
@@ -27,6 +27,9 @@ https://pypi.org/project/TA-Lib/
 
 python-binance:
 https://python-binance.readthedocs.io/en/latest/overview.html
+
+# Run as systemd service:
+Run: sudo ./install-as-systemd-service.sh
 
 # DISCLAIMER: Free to use trading bot, use at your own risk!
 # I do not take any responsibility for any losses.
