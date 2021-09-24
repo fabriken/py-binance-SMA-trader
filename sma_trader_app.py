@@ -2,6 +2,7 @@ import config, csv, datetime, numpy, os, sys, talib
 from binance.client import Client
 from binance.enums import *
 from binance import ThreadedWebsocketManager
+from pprint import pprint
 
 api_key = config.API_KEY           # Set key and secret in the config.py file.
 api_secret = config.API_SECRET
@@ -11,15 +12,15 @@ user = Client(api_key, api_secret) # Client for user endpoints.
 public = Client()                  # Client for public endpoints.
 fee = 0.00075                      # 0.075% in decimal. Set trading fee here, differs between different VIP levels.
 
-test_mode = 0                      # Place a test order instead of a real one. 0 = off | 1 = 0 on
+test_mode = 0                      # Place test orders instead of a real ones. 0 = off | 1 = 0 on
 
 PAIRS = {                          # Define pairs to trade here:
     'GALAUSDT': {                  # PAIRS.keys()
         'symbol': 'GALA',          # Make sure symbol and base are set to the same as the PAIRS.keys().
         'base': 'USDT',            # Make sure symbol and base are set to the same as the PAIRS.keys().
-        'kline': '@kline_15m',     # Set kline interval here.
+        'kline': '@kline_3m',     # Set kline interval here.
         'price': '@bookTicker',    # Set price ticker here.
-        'profit': 2 + fee,         # Set profit margin here.
+        'profit': 1 + fee,         # Set profit margin here, this will be the minimum it sells for.
         'decPrice': 5,             # Count how many decimals the price has and set here.
         'decOrder': 0,             # Same as decPrice, but for the order.
         'smaLow': 5,               # Set the sma low here, default 5.
@@ -33,14 +34,15 @@ PAIRS = {                          # Define pairs to trade here:
         'qty': 0,
         'awaitOrder': False,
         'lastPrice': 0,
+        'load_buy': 0,
         'closes': []
     },
     'CELRUSDT':    {
         'symbol': 'CELR',
         'base': 'USDT',
-        'kline': '@kline_1h',
+        'kline': '@kline_3m',
         'price': '@bookTicker',
-        'profit': 2 + fee, # Set profit margin here.
+        'profit': 1 + fee, # Set profit margin here.
         'decPrice': 5,
         'decOrder': 1,
         'bid': 0,
@@ -54,14 +56,15 @@ PAIRS = {                          # Define pairs to trade here:
         'qty': 0,
         'awaitOrder': False,
         'lastPrice': 0,
+        'load_buy': 0,
         'closes': []
     },
     'DYDXUSDT':    {
         'symbol': 'DYDX',
         'base': 'USDT',
-        'kline': '@kline_1h',
+        'kline': '@kline_5m',
         'price': '@bookTicker',
-        'profit': 2 + fee, # Set profit margin here.
+        'profit': 1 + fee, # Set profit margin here.
         'decPrice': 3,
         'decOrder': 2,
         'bid': 0,
@@ -75,12 +78,13 @@ PAIRS = {                          # Define pairs to trade here:
         'qty': 0,
         'awaitOrder': False,
         'lastPrice': 0,
+        'load_buy': 0,
         'closes': []
     },
     'SHIBUSDT':    {
-        'kline': '@kline_15m',
+        'kline': '@kline_5m',
         'price': '@bookTicker',
-        'profit': 2 + fee, # Set profit margin here.
+        'profit': 1 + fee, # Set profit margin here.
         'decPrice': 8,
         'decOrder': 0,
         'bid': 0,
@@ -96,6 +100,7 @@ PAIRS = {                          # Define pairs to trade here:
         'base': 'USDT',
         'awaitOrder': False,
         'lastPrice': 0,
+        'load_buy': 0,
         'closes': []
     }
 }
@@ -111,7 +116,7 @@ def currtime():
 def history():
     print('\n[+] Fetching history.')
     for i in PAIRS.keys():
-        candlesticks = public.get_historical_klines(i, PAIRS[i]['kline'][-2:], "Yesterday", "Today")
+        candlesticks = public.get_historical_klines(i, PAIRS[i]['kline'][-2:], "Yesterday", "Today") # Fetch candles from yesterday - today, as default. Change to whatever range you need.
         for closes in candlesticks:
             PAIRS[i]['closes'].append(float(closes[4]))
 
@@ -140,8 +145,8 @@ def open_orders(): # Check what's currently in order.
                 for index in range(len(orders)):
                     if i == orders[index]['symbol']:
                         PAIRS[i]['order'] = orders[index]
-                        if PAIRS[i]['order']['side'] == 'SELL':
-                            count += 1
+                        # if PAIRS[i]['order']['side'] == 'SELL':
+                        count += 1
             div = calcDiv - count            
         print('[-] Fetching open orders: \n    Base dividend:', div)
     except Exception as e:
@@ -195,16 +200,13 @@ def load_csv(side, pair):
         with open(f"{side}-{pair}.csv") as f:
             csv_reader = csv.reader(f)
             for line in csv_reader:
-                last_side = line[0]
+                # last_side = line[0]
+                # last_qty = float(line[3])
                 last_price = float(line[2])
-                last_qty = float(line[3])
 
             return last_price
     except FileNotFoundError:
         print(f'No log file found for {side}-{pair}')
-        # for i in PAIRS.keys():
-        #     if i == pair:
-        #         PAIRS[i]['lastPrice'] = 1
         return False
 
 def order(side, symbol, price, qty):
@@ -217,7 +219,8 @@ def order(side, symbol, price, qty):
         price = f"{price:.{dec}f}"
     try:
         if test_mode == 1:
-            print('TEST MODE ACTIVE, NO ORDERS WILL BE EXECUTED! Disable by setting test_mode = 0')
+            print('\nTEST MODE ACTIVE, NO ORDERS WILL BE EXECUTED! Disable by setting test_mode = 0')
+            print('Test order for:', side, symbol, price, qty)
             order = user.create_test_order( # Test order
                 symbol=symbol,
                 side=side,
@@ -226,6 +229,7 @@ def order(side, symbol, price, qty):
                 quantity=qty,
                 price=price)
             print(order)
+            print('Test order successful!')
         else:
             user.create_order( # Real order
                 symbol=symbol,
@@ -236,95 +240,112 @@ def order(side, symbol, price, qty):
                 price=price)
     except Exception as e:
         print(e)
-        return False
+        os.execv(sys.executable, [sys.executable] + sys.argv) # Restarts script completely, on error.
+    return False
 
-def ws():
-    
-    print('[+] WebSocket connected.')
+def userData(msg):
+    global div
+    time = currtime()
+    for i in PAIRS.keys():
+        # symbol = PAIRS[i]['symbol']
+        # base = PAIRS[i]['base']
+        # pair = symbol + base
 
-    try:
-        twm.start()
+        if msg['e'] == 'executionReport':
+            side = msg['S']
+            price = float(msg['p'])
+            quantity = float(msg['q'])
 
-        def userData(msg):
-            global div
-            for i in PAIRS.keys():
-                symbol = PAIRS[i]['symbol']
-                base = PAIRS[i]['base']
-                pair = symbol + base
+            if i == msg['s']:
+                if PAIRS[i]['decOrder'] == 0:
+                    qty = int(quantity)
+                else:
+                    qty = truncate(quantity, PAIRS[i]['decOrder'])
 
-                if msg['e'] == 'executionReport':
-                    # pprint(msg)
-                    side = msg['S']
-                    # symbol = ['s']
-                    price = msg['p']
-                    qty = msg['q']
-                    if pair == msg['s']:
+                if msg['X'] == 'NEW':
+                    print(f'\n{time}')
+                    print(f'New {side} order of {qty} {i} placed at: {price}')
 
-                        if msg['X'] == 'NEW':
-                            print('\nNEW ORDER PLACED: ' + pair, side, price, qty)
+                if msg['X'] == 'FILLED':
+                    PAIRS[i]['awaitOrder'] = False
 
-                        if msg['X'] == 'FILLED':
+                    if side == 'BUY':
+                        print(f'\n{time}')
+                        print(f'Buy order with {qty} {i} filled at: {price}')
+                        div = div - 1
+                        save_csv(side, i, price, qty)
 
-                            if side == 'BUY':
-                                print('\nBUY ORDER FILLED:', pair, price, qty)
-                                div = div - 1
-                                save_csv(side, pair, price, qty)
+                    else:
+                        if PAIRS[i]['load_buy'] == 0:
+                            print(f'\n{time}')
+                            print(f'Sell order for {qty} {i} filled at: {price}')
+                            div = div + 1
+                        else:
+                            div = div + 1
+                            load_buy = PAIRS[i]['load_buy']
+                            gain = '{:.2f}'.format((price - load_buy) / price * 100)
+                            print(f'\n{time}')
+                            print(f'Sell order for {qty} {i} filled at: {price}, bought at: {load_buy}')
+                            print(f'Gain: {gain}%')
 
-                            else:
-                                print('\nSELL ORDER FILLED:', pair, price, qty)
-                                div = div + 1
-                                
-                                if os.path.exists(f"BUY-{pair}.csv"): 
-                                    os.remove(f"BUY-{pair}.csv") # Remove last buy file, so a new buy in can happen.
+                        if os.path.exists(f"BUY-{i}.csv"):
+                            PAIRS[i]['load_buy'] = 0
+                            os.remove(f"BUY-{i}.csv") # Remove last buy file, so a new buy in can happen.
+                            print('Deleted last buy log file.')
 
-        def market(msg):
-            global div
-            # pprint(msg)
-            for i in PAIRS.keys():
-                symbol = PAIRS[i]['symbol']
-                base = PAIRS[i]['base']
-                minNotional = PAIRS[i]['minNotional']
-                price = (PAIRS[i]['symbol'].lower() + PAIRS[i]['base'].lower() + PAIRS[i]['price'])
-                kline = (PAIRS[i]['symbol'].lower() + PAIRS[i]['base'].lower() + PAIRS[i]['kline'])
+def market(msg):
+    global div
+    # pprint(msg)
+    for i in PAIRS.keys():
+        # symbol = PAIRS[i]['symbol']
+        # base = PAIRS[i]['base']
+        # price = (PAIRS[i]['symbol'].lower() + PAIRS[i]['base'].lower() + PAIRS[i]['price'])
+        # kline = (PAIRS[i]['symbol'].lower() + PAIRS[i]['base'].lower() + PAIRS[i]['kline'])
+        minNotional = PAIRS[i]['minNotional']
+        price = (i.lower() + PAIRS[i]['price'])
+        kline = (i.lower() + PAIRS[i]['kline'])
 
-                try:
-                    if msg['stream'] == price:
-                        PAIRS[i]['bid'] = truncate(float(str(msg['data']['b'])), PAIRS[i]['decPrice'])
-                        PAIRS[i]['ask'] = truncate(float(str(msg['data']['a'])), PAIRS[i]['decPrice'])
-                except Exception as e:
-                    print('\nSocket Error!')
-                    print(e)
-                    os.execv(sys.executable, [sys.executable] + sys.argv) # Restarts script completely, on error.
+        try:
+            if msg['stream'] == price:
+                PAIRS[i]['bid'] = truncate(float(str(msg['data']['b'])), PAIRS[i]['decPrice'])
+                PAIRS[i]['ask'] = truncate(float(str(msg['data']['a'])), PAIRS[i]['decPrice'])
+        except Exception as e:
+            print(f'\n{e} socket error, restarting script.')
+            os.execv(sys.executable, [sys.executable] + sys.argv) # Restarts script completely, on error.
 
-                if msg['stream'] == kline:
-                    candle = msg['data']['k']
-                    close = float(candle['c'])
-                    is_candle_closed = candle['x']
+        if msg['stream'] == kline:
+            candle = msg['data']['k']
+            close = float(candle['c'])
+            is_candle_closed = candle['x']
 
-                    if is_candle_closed:
-                        PAIRS[i]['closes'].append(truncate(float(close) , PAIRS[i]['decPrice']))
+            if is_candle_closed:
+                PAIRS[i]['closes'].append(truncate(float(close) , PAIRS[i]['decPrice']))
 
-                if len(PAIRS[i]['closes']) >= PAIRS[i]['smaHigh']:
-                        np_closes = numpy.array(PAIRS[i]['closes'])
-                        sma_low = talib.SMA(np_closes, timeperiod=PAIRS[i]['smaLow'])
-                        sma_high = talib.SMA(np_closes, timeperiod=PAIRS[i]['smaHigh'])
-                        last_sma_low = truncate(sma_low[-1], PAIRS[i]['decPrice'])
-                        last_sma_high = truncate(sma_high[-1],  PAIRS[i]['decPrice'])
-                        # last_sma_low = 60 # Test values
-                        # last_sma_high = 55 # Test values
-                        
-                        if PAIRS[i]['bid'] and PAIRS[i]['ask']: # Make sure we have prices.
+        if len(PAIRS[i]['closes']) >= PAIRS[i]['smaHigh']:
+                np_closes = numpy.array(PAIRS[i]['closes'])
+                sma_low = talib.SMA(np_closes, timeperiod=PAIRS[i]['smaLow'])
+                sma_high = talib.SMA(np_closes, timeperiod=PAIRS[i]['smaHigh'])
+
+                if test_mode == 1:
+                    last_sma_low = 50 # Test values
+                    last_sma_high = 60 # Test values
+                else:
+                    last_sma_low = truncate(sma_low[-1], PAIRS[i]['decPrice'])
+                    last_sma_high = truncate(sma_high[-1],  PAIRS[i]['decPrice'])
+                
+                if PAIRS[i]['bid'] and PAIRS[i]['ask']: # Make sure we have prices.
+                    assetBal = float(PAIRS[i]['assetBal'])
+                    bid = PAIRS[i]['bid']
+                    ask = PAIRS[i]['ask']
+                
+                    if PAIRS[i]['awaitOrder'] == False:
+
+                        if PAIRS[i]['order'] == 0: # If not in order, create an inital order, buy or sell, but await signal first:
                             assetBal = float(PAIRS[i]['assetBal'])
                             bid = PAIRS[i]['bid']
                             ask = PAIRS[i]['ask']
-
-
-                            if PAIRS[i]['order'] == 0: # If not in order, create an inital order, buy or sell, but await signal first:
-                                assetBal = float(PAIRS[i]['assetBal'])
-                                bid = PAIRS[i]['bid']
-                                ask = PAIRS[i]['ask']
-                                # div = div - 1
-                                
+                            # div = div - 1
+                            
                             if assetBal * ask > minNotional: # Place SELL ORDER if true.
                                 # div = div - 1
                                 if PAIRS[i]['decOrder'] == 0:
@@ -335,30 +356,34 @@ def ws():
                                 if PAIRS[i]['awaitOrder'] == False:
                                     if last_sma_low < last_sma_high: # SELL SIGNAL - if true
                                         # if PAIRS[i]['lastPrice'] == 0:
-                                            pair = symbol + base
-                                            load_buy = load_csv('BUY', pair)
+                                            # pair = symbol + base
+                                            load_buy = load_csv('BUY', i)
                                             if load_buy: # If load_buy is successful, base the order from past trade:
+                                                PAIRS[i]['load_buy'] = load_buy
 
                                                 if (ask - load_buy) / ask * 100 > PAIRS[i]['profit']:
                                                     PAIRS[i]['awaitOrder'] = True
-                                                    gain = '{:.2f}'.format((ask - load_buy) / ask * 100)
+                                                    # gain = '{:.2f}'.format((ask - load_buy) / ask * 100)
 
-                                                    print(f'\nSelling {assetBal} {symbol} at: {ask}, bought at: {load_buy}')
-                                                    print(f'Potential gain: {gain}%')
+                                                    # print(f'\nSelling {assetBal} {i} at: {ask}, bought at: {load_buy}')
+                                                    # print(f'Gain if filled: {gain}%')
 
-                                                    order(SIDE_SELL, PAIRS[i]['symbol'] + PAIRS[i]['base'], ask, qty)
+                                                    order(SIDE_SELL, i, ask, qty)
 
                                             else: # Just place an order, this will be the starting point for the trading:
                                                     PAIRS[i]['awaitOrder'] = True
-                                                    print(f'\nSelling: {assetBal} {symbol} at {ask}, no past buy trade logged.')
-                                                    order(SIDE_SELL, PAIRS[i]['symbol'] + PAIRS[i]['base'], ask, qty)
+                                                    # print(f'\nSelling: {assetBal} {i} at {ask}, no past buy trade logged.')
+                                                    order(SIDE_SELL, i, ask, qty)
 
                             else: # place BUY ORDER
                                 if div > 1:
+                                    global baseBal
                                     baseBal = float(PAIRS[i]['baseBal']) / div
+                                    PAIRS[i]['baseBal'] = baseBal
                                     bid = PAIRS[i]['bid']
                                 else:
                                     baseBal = float(PAIRS[i]['baseBal'])
+                                    PAIRS[i]['baseBal'] = baseBal
                                     bid = PAIRS[i]['bid']
 
                                 if PAIRS[i]['decOrder'] == 0:
@@ -370,15 +395,31 @@ def ws():
                                     if last_sma_low > last_sma_high: # BUY SIGNAL - if true
                                         if baseBal > minNotional:
                                             PAIRS[i]['awaitOrder'] = True
-                                            print('Dividend:', div)
-                                            print(f'\nBuying: {qty} {symbol} with {baseBal} {base} at {bid}')
-                                            order(SIDE_BUY, PAIRS[i]['symbol'] + PAIRS[i]['base'], bid, qty)
+                                            # print('Dividend:', div)
+                                            # print(f'\nBuying: {qty} {i} with {baseBal} at {bid}')
+                                            order(SIDE_BUY, i, bid, qty)
+                        else: # If BUY order has not filled until a SELL signal comes, cancel buy order.
+                            if PAIRS[i]['order']['side'] == 'BUY':
+                                if last_sma_low < last_sma_high:
+                                    PAIRS[i]['awaitOrder'] = True
+                                    # cancel = user.cancel_order(symbol=PAIRS[i]['order']['symbol'], orderId=PAIRS[i]['order']['orderId'])
+                                    cancel = user.cancel_order(symbol=i, orderId=PAIRS[i]['order']['orderId'])
+                                    if cancel:
+                                        print('Cancelled order: ', i, PAIRS[i]['order']['orderId'])
 
+def ws():
+    
+    print('[+] WebSockets connected.')
+    if test_mode == 1:
+        print('\nTest mode active. Disable by changing test_mode to 0')
+
+    try:
+        twm.start()
         twm.start_user_socket(callback=userData)
         join_streams = []
         for i in PAIRS.keys():
-            price = (PAIRS[i]['symbol'].lower() + PAIRS[i]['base'].lower() + PAIRS[i]['price'])
-            kline = (PAIRS[i]['symbol'].lower() + PAIRS[i]['base'].lower() + PAIRS[i]['kline'])
+            price = i.lower() + PAIRS[i]['price']
+            kline = i.lower() + PAIRS[i]['kline']
             join_streams.append(price)
             join_streams.append(kline)
 
@@ -389,7 +430,7 @@ def ws():
     except Exception as e:
         print('\nSocket Error!')
         print(e)
-        print('\nAttempting to restart script!')
+        print('\nRestarting script!')
         os.execv(sys.executable, [sys.executable] + sys.argv) # Restarts script completely, on error.
     # return False
 
